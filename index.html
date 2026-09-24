@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ckb" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f1413">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="مۆحجوزات">
+<title>مۆحجوزات</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{
+    --ink:#0f1413;
+    --paper:#f6f3ec;
+    --card:#ffffff;
+    --line:#dcd6c6;
+    --hawler:#2f6f5e;
+    --hawler-soft:#e7f1ec;
+    --janoub:#a5581f;
+    --janoub-soft:#f6ece1;
+    --gold:#b8923a;
+    --danger:#b23b3b;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Segoe UI', Tahoma, 'Noto Sans Arabic', sans-serif;
+    min-height:100vh;
+    padding-bottom:40px;
+  }
+  header{
+    padding:22px 18px 18px;
+    text-align:center;
+    border-bottom:1px solid var(--line);
+    background:var(--card);
+    position:sticky;
+    top:0;
+    z-index:5;
+  }
+  header h1{
+    margin:0;
+    font-size:22px;
+    letter-spacing:.5px;
+    font-weight:700;
+  }
+  header p{
+    margin:6px 0 0;
+    font-size:13px;
+    color:#6b6459;
+  }
+
+  .summary{
+    display:flex;
+    gap:10px;
+    padding:14px 14px 6px;
+    max-width:640px;
+    margin:0 auto;
+  }
+  .sum-card{
+    flex:1;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 8px;
+    text-align:center;
+  }
+  .sum-card .label{
+    font-size:12px;
+    color:#6b6459;
+    margin-bottom:6px;
+  }
+  .sum-card .value{
+    font-size:20px;
+    font-weight:700;
+    font-variant-numeric:tabular-nums;
+  }
+  .sum-card.hawler .value{color:var(--hawler);}
+  .sum-card.janoub .value{color:var(--janoub);}
+  .sum-card.total{background:var(--ink);border-color:var(--ink);}
+  .sum-card.total .label{color:#cfc9ba;}
+  .sum-card.total .value{color:var(--gold);}
+
+  main{
+    max-width:640px;
+    margin:0 auto;
+    padding:10px 14px 0;
+  }
+
+  .col-heads{
+    display:grid;
+    grid-template-columns:44px 1fr 1fr;
+    gap:8px;
+    padding:6px 4px;
+    font-size:12px;
+    color:#6b6459;
+    position:sticky;
+    top:88px;
+    background:var(--paper);
+    z-index:4;
+  }
+  .col-heads span{text-align:center;}
+  .col-heads .ch-hawler{color:var(--hawler);font-weight:600;}
+  .col-heads .ch-janoub{color:var(--janoub);font-weight:600;}
+
+  .row{
+    display:grid;
+    grid-template-columns:44px 1fr 1fr;
+    gap:8px;
+    align-items:center;
+    padding:4px;
+    border-bottom:1px solid var(--line);
+  }
+  .row .serial{
+    text-align:center;
+    font-size:13px;
+    color:#8a8375;
+    font-variant-numeric:tabular-nums;
+  }
+  .row input{
+    width:100%;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:9px 6px;
+    font-size:15px;
+    text-align:center;
+    background:var(--card);
+    color:var(--ink);
+    font-variant-numeric:tabular-nums;
+  }
+  .row input.hawler{background:var(--hawler-soft);}
+  .row input.janoub{background:var(--janoub-soft);}
+  .row input:focus{outline:2px solid var(--gold);outline-offset:1px;}
+  .row.filled{background:rgba(184,146,58,.06);}
+
+  .actions{
+    max-width:640px;
+    margin:18px auto 0;
+    padding:0 14px;
+    display:flex;
+    gap:10px;
+  }
+  .actions button{
+    flex:1;
+    padding:13px 8px;
+    border-radius:10px;
+    border:none;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  #resetBtn{
+    background:var(--card);
+    border:1px solid var(--danger);
+    color:var(--danger);
+  }
+  #printBtn{
+    background:var(--ink);
+    color:var(--gold);
+  }
+
+  .clearance{
+    max-width:640px;
+    margin:16px auto 0;
+    padding:0 14px;
+    font-size:13px;
+    color:#6b6459;
+    display:flex;
+    justify-content:space-between;
+  }
+
+  @media print{
+    header, .actions, .col-heads{position:static;}
+    body{background:#fff;}
+    .sum-card.total{color:#000;background:#fff;border:1px solid #000;}
+    .sum-card.total .label, .sum-card.total .value{color:#000;}
+  }
+
+  .install-bar{
+    max-width:640px;
+    margin:14px auto 0;
+    padding:0 14px;
+    display:none;
+  }
+  .install-bar.show{display:block;}
+  .install-bar button{
+    width:100%;
+    padding:12px;
+    border-radius:10px;
+    border:1px dashed var(--gold);
+    background:var(--hawler-soft);
+    color:var(--ink);
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(15,20,19,.55);
+    display:none;
+    align-items:flex-end;
+    justify-content:center;
+    z-index:20;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal-sheet{
+    background:var(--card);
+    width:100%;
+    max-width:640px;
+    border-radius:16px 16px 0 0;
+    padding:20px 18px 26px;
+    text-align:center;
+  }
+  .modal-sheet p{
+    font-size:14px;
+    line-height:1.9;
+    margin:10px 0;
+  }
+  .modal-sheet button{
+    margin-top:10px;
+    padding:10px 20px;
+    border-radius:8px;
+    border:none;
+    background:var(--ink);
+    color:var(--gold);
+    font-weight:600;
+    cursor:pointer;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="headerTitle">0</h1>
+  <p>هەولێر و جنووب — بەپێی ژمارەی وەصل</p>
+</header>
+
+<div class="summary">
+  <div class="sum-card hawler">
+    <div class="label">هەولێر</div>
+    <div class="value" id="sumHawler">0</div>
+  </div>
+  <div class="sum-card janoub">
+    <div class="label">جنووب</div>
+    <div class="value" id="sumJanoub">0</div>
+  </div>
+  <div class="sum-card total">
+    <div class="label">کۆی گشتی</div>
+    <div class="value" id="sumTotal">0</div>
+  </div>
+</div>
+
+<main>
+  <div class="col-heads">
+    <span>ژ.وصل</span>
+    <span class="ch-hawler">هەولێر</span>
+    <span class="ch-janoub">جنووب</span>
+  </div>
+  <div id="rows"></div>
+</main>
+
+<div class="clearance">
+  <span>پاکانەی هەولێر: <b id="clearHawler">0</b></span>
+  <span>پاکانەی جنووب: <b id="clearJanoub">0</b></span>
+</div>
+
+<div class="actions">
+  <button id="resetBtn">سڕینەوەی هەموو</button>
+  <button id="printBtn">چاپکردن</button>
+</div>
+
+<div class="install-bar" id="installBar">
+  <button id="installBtn">📲 دامەزراندنی ئەپ لەسەر مۆبایل</button>
+</div>
+
+<div class="modal-overlay" id="iosModal">
+  <div class="modal-sheet">
+    <p><b>دامەزراندنی ئەپ لەسەر ئایفۆن:</b></p>
+    <p>١. دوگمەی هاوبەشکردن (Share) لە خوارەوەی سافari دابگرە<br>
+       ٢. «Add to Home Screen / زیادکردن بۆ سەرەکی» هەڵبژێرە</p>
+    <button onclick="document.getElementById('iosModal').classList.remove('show')">تەواو</button>
+  </div>
+</div>
+
+<script>
+const ROWS = 50;
+const STORAGE_KEY = 'mahjuzat-data-v1';
+const rowsEl = document.getElementById('rows');
+
+let data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+
+function formatDisplay(raw){
+  if(raw === '' || raw === undefined || raw === null) return '';
+  const num = Number(raw);
+  if(isNaN(num)) return '';
+  return num.toLocaleString('en-US');
+}
+
+function buildRows(){
+  let html = '';
+  for(let i = 1; i <= ROWS; i++){
+    html += `
+      <div class="row" data-idx="${i}">
+        <div class="serial">${i}</div>
+        <input class="hawler" inputmode="numeric" data-col="h" data-idx="${i}" value="${formatDisplay(data['h'+i])}">
+        <input class="janoub" inputmode="numeric" data-col="j" data-idx="${i}" value="${formatDisplay(data['j'+i])}">
+      </div>`;
+  }
+  rowsEl.innerHTML = html;
+}
+
+function recalc(){
+  let sumH = 0, sumJ = 0;
+  for(let i = 1; i <= ROWS; i++){
+    const h = parseFloat(data['h'+i]);
+    const j = parseFloat(data['j'+i]);
+    if(!isNaN(h)) sumH += h;
+    if(!isNaN(j)) sumJ += j;
+  }
+  document.getElementById('sumHawler').textContent = sumH.toLocaleString();
+  document.getElementById('sumJanoub').textContent = sumJ.toLocaleString();
+  document.getElementById('sumTotal').textContent = (sumH + sumJ).toLocaleString();
+  document.getElementById('headerTitle').textContent = (sumH + sumJ).toLocaleString();
+  document.getElementById('clearHawler').textContent = sumH.toLocaleString();
+  document.getElementById('clearJanoub').textContent = sumJ.toLocaleString();
+
+  document.querySelectorAll('.row').forEach(r=>{
+    const idx = r.dataset.idx;
+    const filled = (data['h'+idx] ?? '') !== '' || (data['j'+idx] ?? '') !== '';
+    r.classList.toggle('filled', filled);
+  });
+}
+
+rowsEl.addEventListener('input', (e)=>{
+  const t = e.target;
+  if(t.tagName !== 'INPUT') return;
+  const key = t.dataset.col + t.dataset.idx;
+
+  const digitsOnly = t.value.replace(/[^\d]/g, '');
+  if(digitsOnly === ''){
+    data[key] = '';
+    t.value = '';
+  } else {
+    data[key] = digitsOnly;
+    t.value = Number(digitsOnly).toLocaleString('en-US');
+    // keep cursor at the end, since digits only ever grow left-to-right here
+    requestAnimationFrame(()=>{
+      const len = t.value.length;
+      t.setSelectionRange(len, len);
+    });
+  }
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  recalc();
+});
+
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  if(confirm('دڵنیایت لە سڕینەوەی هەموو ژمارەکان؟')){
+    data = {};
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    buildRows();
+    recalc();
+  }
+});
+
+document.getElementById('printBtn').addEventListener('click', ()=>window.print());
+
+buildRows();
+recalc();
+
+// --- PWA install handling ---
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const installBar = document.getElementById('installBar');
+let deferredPrompt = null;
+
+if(!isStandalone){
+  if(isIOS){
+    installBar.classList.add('show');
+    document.getElementById('installBtn').textContent = '📲 دامەزراندن لەسەر ئایفۆن';
+  }
+  window.addEventListener('beforeinstallprompt', (e)=>{
+    e.preventDefault();
+    deferredPrompt = e;
+    installBar.classList.add('show');
+  });
+}
+
+document.getElementById('installBtn').addEventListener('click', async ()=>{
+  if(isIOS){
+    document.getElementById('iosModal').classList.add('show');
+    return;
+  }
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    installBar.classList.remove('show');
+  }
+});
+
+window.addEventListener('appinstalled', ()=>{
+  installBar.classList.remove('show');
+});
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+</script>
+
+</body>
+</html>
