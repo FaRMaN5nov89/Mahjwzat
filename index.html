@@ -85,6 +85,15 @@
   .sum-card.total .label{color:#cfc9ba;}
   .sum-card.total .value{color:var(--gold);}
 
+  .summary.ranges{
+    padding-top:4px;
+  }
+  .sum-card.range{
+    border:1px solid var(--gold);
+    background:#fffdf6;
+  }
+  .sum-card.range .value{color:var(--ink);}
+
   main{
     max-width:640px;
     margin:0 auto;
@@ -256,6 +265,17 @@
   </div>
 </div>
 
+<div class="summary ranges">
+  <div class="sum-card range">
+    <div class="label">نیوەی یەکەم</div>
+    <div class="value" id="sumRange1">0</div>
+  </div>
+  <div class="sum-card range">
+    <div class="label">نیوەی دووەم</div>
+    <div class="value" id="sumRange2">0</div>
+  </div>
+</div>
+
 <main>
   <div class="col-heads">
     <span>ژ.وصل</span>
@@ -315,6 +335,17 @@ function buildRows(){
   rowsEl.innerHTML = html;
 }
 
+function rangeSum(from, to){
+  let s = 0;
+  for(let i = from; i <= to; i++){
+    const h = parseFloat(data['h'+i]);
+    const j = parseFloat(data['j'+i]);
+    if(!isNaN(h)) s += h;
+    if(!isNaN(j)) s += j;
+  }
+  return s;
+}
+
 function recalc(){
   let sumH = 0, sumJ = 0;
   for(let i = 1; i <= ROWS; i++){
@@ -329,6 +360,9 @@ function recalc(){
   document.getElementById('headerTitle').textContent = (sumH + sumJ).toLocaleString();
   document.getElementById('clearHawler').textContent = sumH.toLocaleString();
   document.getElementById('clearJanoub').textContent = sumJ.toLocaleString();
+
+  document.getElementById('sumRange1').textContent = rangeSum(1, 25).toLocaleString();
+  document.getElementById('sumRange2').textContent = rangeSum(26, 50).toLocaleString();
 
   document.querySelectorAll('.row').forEach(r=>{
     const idx = r.dataset.idx;
