@@ -53,6 +53,14 @@
     font-size:13px;
     color:#6b6459;
   }
+  .loaded-date{
+    display:none;
+    margin-top:6px;
+    font-size:12px;
+    color:var(--gold);
+    font-weight:600;
+  }
+  .loaded-date.show{display:block;}
 
   .summary{
     display:flex;
@@ -162,14 +170,34 @@
     font-weight:600;
     cursor:pointer;
   }
-  #resetBtn{
+  #saveBtn{
+    background:var(--hawler);
+    color:#fff;
+    flex:1.4;
+  }
+  #historyBtn{
     background:var(--card);
-    border:1px solid var(--danger);
-    color:var(--danger);
+    border:1px solid var(--gold);
+    color:var(--ink);
   }
   #printBtn{
     background:var(--ink);
     color:var(--gold);
+  }
+  .clear-link{
+    max-width:640px;
+    margin:10px auto 0;
+    padding:0 14px;
+    text-align:center;
+  }
+  .clear-link button{
+    background:none;
+    border:none;
+    color:var(--danger);
+    font-size:12px;
+    text-decoration:underline;
+    cursor:pointer;
+    padding:6px;
   }
 
   .clearance{
@@ -184,6 +212,7 @@
 
   @media print{
     header, .actions, .col-heads{position:static;}
+    .actions, .clear-link, .install-bar, .modal-overlay{display:none !important;}
     body{background:#fff;}
     .sum-card.total{color:#000;background:#fff;border:1px solid #000;}
     .sum-card.total .label, .sum-card.total .value{color:#000;}
@@ -225,13 +254,19 @@
     border-radius:16px 16px 0 0;
     padding:20px 18px 26px;
     text-align:center;
+    max-height:88vh;
+    overflow-y:auto;
   }
   .modal-sheet p{
     font-size:14px;
     line-height:1.9;
     margin:10px 0;
   }
-  .modal-sheet button{
+  .modal-sheet h2{
+    margin:0 0 12px;
+    font-size:18px;
+  }
+  .modal-sheet button.plain{
     margin-top:10px;
     padding:10px 20px;
     border-radius:8px;
@@ -241,6 +276,108 @@
     font-weight:600;
     cursor:pointer;
   }
+  .modal-sheet label{
+    display:block;
+    font-size:13px;
+    color:#6b6459;
+    margin:10px 0 4px;
+    text-align:right;
+  }
+  .modal-sheet input[type=date],
+  .modal-sheet input[type=month]{
+    width:100%;
+    padding:11px 10px;
+    font-size:16px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--card);
+    color:var(--ink);
+    text-align:center;
+    font-family:inherit;
+  }
+  .btn-row{
+    display:flex;
+    gap:10px;
+    margin-top:16px;
+  }
+  .btn-row button{
+    flex:1;
+    padding:12px;
+    border-radius:10px;
+    border:none;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .btn-primary{background:var(--hawler);color:#fff;}
+  .btn-ghost{background:var(--card);border:1px solid var(--line) !important;color:var(--ink);}
+
+  .month-total{
+    display:flex;
+    gap:8px;
+    margin:14px 0 6px;
+  }
+  .month-total .sum-card{padding:10px 4px;}
+  .month-total .sum-card .value{font-size:16px;}
+  .month-total .days{font-size:11px;color:#6b6459;margin-top:2px;}
+
+  .rec-list{margin-top:10px;text-align:right;}
+  .rec{
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+    margin-bottom:8px;
+    background:var(--card);
+  }
+  .rec-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-weight:700;
+    font-variant-numeric:tabular-nums;
+  }
+  .rec-top .tot{color:var(--gold);}
+  .rec-mid{
+    display:flex;
+    justify-content:space-between;
+    font-size:12px;
+    margin:6px 0 8px;
+    color:#6b6459;
+    font-variant-numeric:tabular-nums;
+  }
+  .rec-mid .h{color:var(--hawler);}
+  .rec-mid .j{color:var(--janoub);}
+  .rec-btns{display:flex;gap:8px;}
+  .rec-btns button{
+    flex:1;
+    padding:8px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--card);
+    font-size:13px;
+    cursor:pointer;
+  }
+  .rec-btns .open{border-color:var(--hawler);color:var(--hawler);font-weight:600;}
+  .rec-btns .del{border-color:var(--danger);color:var(--danger);}
+  .empty{font-size:13px;color:#8a8375;padding:18px 0;}
+
+  .toast{
+    position:fixed;
+    bottom:24px;
+    left:50%;
+    transform:translateX(-50%);
+    background:var(--ink);
+    color:var(--gold);
+    padding:10px 18px;
+    border-radius:20px;
+    font-size:13px;
+    font-weight:600;
+    z-index:40;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s;
+  }
+  .toast.show{opacity:1;}
 </style>
 </head>
 <body>
@@ -248,6 +385,7 @@
 <header>
   <h1 id="headerTitle">0</h1>
   <p>هەولێر و جنووب — بەپێی ژمارەی وەصل</p>
+  <div class="loaded-date" id="loadedDate"></div>
 </header>
 
 <div class="summary">
@@ -291,12 +429,62 @@
 </div>
 
 <div class="actions">
-  <button id="resetBtn">سڕینەوەی هەموو</button>
+  <button id="saveBtn">💾 سەیڤکردن</button>
+  <button id="historyBtn">📅 تۆمارەکان</button>
   <button id="printBtn">چاپکردن</button>
+</div>
+<div class="clear-link">
+  <button id="resetBtn">پاککردنەوەی خشتەی ئێستا</button>
 </div>
 
 <div class="install-bar" id="installBar">
   <button id="installBtn">📲 دامەزراندنی ئەپ لەسەر مۆبایل</button>
+</div>
+
+<!-- Save modal -->
+<div class="modal-overlay" id="saveModal">
+  <div class="modal-sheet">
+    <h2>سەیڤکردنی ڕۆژ</h2>
+    <label for="saveDate">بەرواری ئەم ڕۆژە</label>
+    <input type="date" id="saveDate">
+    <div class="month-total" style="margin-top:14px;">
+      <div class="sum-card hawler"><div class="label">هەولێر</div><div class="value" id="saveH">0</div></div>
+      <div class="sum-card janoub"><div class="label">جنووب</div><div class="value" id="saveJ">0</div></div>
+      <div class="sum-card total"><div class="label">کۆی گشتی</div><div class="value" id="saveT">0</div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-ghost" id="saveCancel">پاشگەزبوونەوە</button>
+      <button class="btn-primary" id="saveConfirm">سەیڤ بکە</button>
+    </div>
+  </div>
+</div>
+
+<!-- History modal -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal-sheet">
+    <h2>تۆمارە سەیڤکراوەکان</h2>
+
+    <label for="monthPick">کۆی مانگانە (مانگ هەڵبژێرە)</label>
+    <input type="month" id="monthPick">
+    <div class="month-total">
+      <div class="sum-card hawler"><div class="label">هەولێر</div><div class="value" id="mH">0</div></div>
+      <div class="sum-card janoub"><div class="label">جنووب</div><div class="value" id="mJ">0</div></div>
+      <div class="sum-card total"><div class="label">کۆی مانگ</div><div class="value" id="mT">0</div></div>
+    </div>
+    <div class="days" id="mDays" style="font-size:12px;color:#6b6459;"></div>
+
+    <label for="datePick">دۆزینەوەی بەرواری دیاریکراو</label>
+    <input type="date" id="datePick">
+    <div class="btn-row" style="margin-top:8px;">
+      <button class="btn-ghost" id="clearFilter">هەموو بەروارەکان</button>
+    </div>
+
+    <div class="rec-list" id="recList"></div>
+
+    <div class="btn-row">
+      <button class="btn-ghost" id="historyClose">داخستن</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="iosModal">
@@ -304,16 +492,42 @@
     <p><b>دامەزراندنی ئەپ لەسەر ئایفۆن:</b></p>
     <p>١. دوگمەی هاوبەشکردن (Share) لە خوارەوەی سافari دابگرە<br>
        ٢. «Add to Home Screen / زیادکردن بۆ سەرەکی» هەڵبژێرە</p>
-    <button onclick="document.getElementById('iosModal').classList.remove('show')">تەواو</button>
+    <button class="plain" onclick="document.getElementById('iosModal').classList.remove('show')">تەواو</button>
   </div>
 </div>
+
+<div class="toast" id="toast"></div>
 
 <script>
 const ROWS = 50;
 const STORAGE_KEY = 'mahjuzat-data-v1';
+const HISTORY_KEY = 'mahjuzat-history-v1';
 const rowsEl = document.getElementById('rows');
 
-let data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+function loadJSON(key){
+  try{ return JSON.parse(localStorage.getItem(key) || '{}') || {}; }
+  catch(e){ return {}; }
+}
+
+let data = loadJSON(STORAGE_KEY);
+let history = loadJSON(HISTORY_KEY);   // { 'YYYY-MM-DD': {data, h, j, total, savedAt} }
+let currentDate = '';                  // date of the record currently loaded, if any
+
+function todayISO(){
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
+}
+function persistHistory(){
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+function fmt(n){ return Number(n).toLocaleString('en-US'); }
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
 
 function formatDisplay(raw){
   if(raw === '' || raw === undefined || raw === null) return '';
@@ -346,14 +560,19 @@ function rangeSum(from, to){
   return s;
 }
 
-function recalc(){
+function totals(src){
   let sumH = 0, sumJ = 0;
   for(let i = 1; i <= ROWS; i++){
-    const h = parseFloat(data['h'+i]);
-    const j = parseFloat(data['j'+i]);
+    const h = parseFloat(src['h'+i]);
+    const j = parseFloat(src['j'+i]);
     if(!isNaN(h)) sumH += h;
     if(!isNaN(j)) sumJ += j;
   }
+  return {h:sumH, j:sumJ, t:sumH+sumJ};
+}
+
+function recalc(){
+  const {h:sumH, j:sumJ} = totals(data);
   document.getElementById('sumHawler').textContent = sumH.toLocaleString();
   document.getElementById('sumJanoub').textContent = sumJ.toLocaleString();
   document.getElementById('sumTotal').textContent = (sumH + sumJ).toLocaleString();
@@ -371,6 +590,20 @@ function recalc(){
   });
 }
 
+function updateLoadedLabel(){
+  const el = document.getElementById('loadedDate');
+  if(currentDate){
+    el.textContent = 'بەرواری تۆمار: ' + currentDate;
+    el.classList.add('show');
+  } else {
+    el.classList.remove('show');
+  }
+}
+
+function hasAnyData(){
+  return Object.values(data).some(v => v !== '' && v !== undefined);
+}
+
 rowsEl.addEventListener('input', (e)=>{
   const t = e.target;
   if(t.tagName !== 'INPUT') return;
@@ -383,7 +616,6 @@ rowsEl.addEventListener('input', (e)=>{
   } else {
     data[key] = digitsOnly;
     t.value = Number(digitsOnly).toLocaleString('en-US');
-    // keep cursor at the end, since digits only ever grow left-to-right here
     requestAnimationFrame(()=>{
       const len = t.value.length;
       t.setSelectionRange(len, len);
@@ -394,19 +626,162 @@ rowsEl.addEventListener('input', (e)=>{
   recalc();
 });
 
+/* ---------- Clear current sheet ---------- */
+function clearSheet(){
+  data = {};
+  currentDate = '';
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  buildRows();
+  recalc();
+  updateLoadedLabel();
+}
 document.getElementById('resetBtn').addEventListener('click', ()=>{
-  if(confirm('دڵنیایت لە سڕینەوەی هەموو ژمارەکان؟')){
-    data = {};
+  if(confirm('دڵنیایت لە پاککردنەوەی خشتەی ئێستا؟ (تۆمارە سەیڤکراوەکان ناسڕێنەوە)')){
+    clearSheet();
+  }
+});
+
+/* ---------- Save ---------- */
+const saveModal = document.getElementById('saveModal');
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  if(!hasAnyData()){
+    toast('هیچ ژمارەیەک نەنووسراوە');
+    return;
+  }
+  const t = totals(data);
+  document.getElementById('saveH').textContent = fmt(t.h);
+  document.getElementById('saveJ').textContent = fmt(t.j);
+  document.getElementById('saveT').textContent = fmt(t.t);
+  document.getElementById('saveDate').value = currentDate || todayISO();
+  saveModal.classList.add('show');
+});
+document.getElementById('saveCancel').addEventListener('click', ()=>saveModal.classList.remove('show'));
+
+document.getElementById('saveConfirm').addEventListener('click', ()=>{
+  const date = document.getElementById('saveDate').value;
+  if(!date){
+    toast('تکایە بەروار هەڵبژێرە');
+    return;
+  }
+  if(history[date] && date !== currentDate){
+    if(!confirm('بۆ ئەم بەروارە پێشتر تۆمار کراوە. دەتەوێ جێگەی بگریتەوە؟')) return;
+  }
+  const t = totals(data);
+  history[date] = {
+    data: JSON.parse(JSON.stringify(data)),
+    h: t.h, j: t.j, total: t.t,
+    savedAt: new Date().toISOString()
+  };
+  persistHistory();
+  saveModal.classList.remove('show');
+  toast('سەیڤکرا: ' + date);
+
+  if(confirm('سەیڤکرا ✓\nدەتەوێ خشتەکە پاک بکرێتەوە بۆ ڕۆژی نوێ؟')){
+    clearSheet();
+  } else {
+    currentDate = date;
+    updateLoadedLabel();
+  }
+});
+
+/* ---------- History ---------- */
+const historyModal = document.getElementById('historyModal');
+const monthPick = document.getElementById('monthPick');
+const datePick = document.getElementById('datePick');
+
+function renderHistory(){
+  // monthly total
+  const month = monthPick.value;
+  let mH = 0, mJ = 0, days = 0;
+  Object.keys(history).forEach(d=>{
+    if(month && d.startsWith(month)){
+      mH += history[d].h; mJ += history[d].j; days++;
+    }
+  });
+  document.getElementById('mH').textContent = fmt(mH);
+  document.getElementById('mJ').textContent = fmt(mJ);
+  document.getElementById('mT').textContent = fmt(mH + mJ);
+  document.getElementById('mDays').textContent = 'ژمارەی ڕۆژە سەیڤکراوەکان لەم مانگەدا: ' + days;
+
+  // list (filtered by exact date if chosen)
+  const wanted = datePick.value;
+  let keys = Object.keys(history).sort().reverse();
+  if(wanted) keys = keys.filter(k => k === wanted);
+
+  const list = document.getElementById('recList');
+  if(keys.length === 0){
+    list.innerHTML = '<div class="empty">' + (wanted ? 'هیچ تۆمارێک بۆ ئەم بەروارە نییە' : 'هێشتا هیچ تۆمارێک سەیڤ نەکراوە') + '</div>';
+    return;
+  }
+  list.innerHTML = keys.map(k=>{
+    const r = history[k];
+    return `
+      <div class="rec">
+        <div class="rec-top"><span>${k}</span><span class="tot">${fmt(r.total)}</span></div>
+        <div class="rec-mid"><span class="h">هەولێر: ${fmt(r.h)}</span><span class="j">جنووب: ${fmt(r.j)}</span></div>
+        <div class="rec-btns">
+          <button class="open" data-date="${k}">کردنەوە / دەستکاری</button>
+          <button class="del" data-date="${k}">سڕینەوە</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+document.getElementById('historyBtn').addEventListener('click', ()=>{
+  if(!monthPick.value) monthPick.value = todayISO().slice(0,7);
+  renderHistory();
+  historyModal.classList.add('show');
+});
+document.getElementById('historyClose').addEventListener('click', ()=>historyModal.classList.remove('show'));
+monthPick.addEventListener('input', renderHistory);
+datePick.addEventListener('input', ()=>{
+  // jump the month total to the searched date's month for convenience
+  if(datePick.value) monthPick.value = datePick.value.slice(0,7);
+  renderHistory();
+});
+document.getElementById('clearFilter').addEventListener('click', ()=>{
+  datePick.value = '';
+  renderHistory();
+});
+
+document.getElementById('recList').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const date = btn.dataset.date;
+  if(!history[date]) return;
+
+  if(btn.classList.contains('open')){
+    if(hasAnyData() && !(currentDate === date)){
+      if(!confirm('خشتەی ئێستا جێگەی دەگیرێتەوە بە تۆماری ' + date + '. بەردەوام بم؟\n(ئەگەر ژمارەکانی ئێستات سەیڤ نەکردووە، ئێستا سەیڤیان بکە)')) return;
+    }
+    data = JSON.parse(JSON.stringify(history[date].data));
+    currentDate = date;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     buildRows();
     recalc();
+    updateLoadedLabel();
+    historyModal.classList.remove('show');
+    window.scrollTo({top:0, behavior:'smooth'});
+    toast('تۆماری ' + date + ' کرایەوە');
+  } else if(btn.classList.contains('del')){
+    if(confirm('دڵنیایت لە سڕینەوەی تۆماری ' + date + '؟')){
+      delete history[date];
+      persistHistory();
+      if(currentDate === date){ currentDate = ''; updateLoadedLabel(); }
+      renderHistory();
+    }
   }
+});
+
+[saveModal, historyModal].forEach(m=>{
+  m.addEventListener('click', (e)=>{ if(e.target === m) m.classList.remove('show'); });
 });
 
 document.getElementById('printBtn').addEventListener('click', ()=>window.print());
 
 buildRows();
 recalc();
+updateLoadedLabel();
 
 // --- PWA install handling ---
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
