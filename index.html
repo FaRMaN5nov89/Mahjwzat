@@ -378,6 +378,30 @@
     transition:opacity .25s;
   }
   .toast.show{opacity:1;}
+  .day-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin:14px 2px 6px;
+    font-size:13px;
+    font-weight:700;
+    color:var(--ink);
+    font-variant-numeric:tabular-nums;
+  }
+  .day-head .dt{color:var(--gold);}
+  .rec-name{font-weight:700;}
+  .modal-sheet input[type=text]{
+    width:100%;
+    padding:11px 10px;
+    font-size:15px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--card);
+    color:var(--ink);
+    text-align:center;
+    font-family:inherit;
+  }
+  .save-info{font-size:12px;color:var(--gold);margin-top:8px;min-height:16px;}
 </style>
 </head>
 <body>
@@ -452,7 +476,11 @@
       <div class="sum-card janoub"><div class="label">جنووب</div><div class="value" id="saveJ">0</div></div>
       <div class="sum-card total"><div class="label">کۆی گشتی</div><div class="value" id="saveT">0</div></div>
     </div>
-    <div class="btn-row">
+    <label for="saveName">ناوی دەفتەر</label>
+    <input type="text" id="saveName" maxlength="40">
+    <div class="save-info" id="saveInfo"></div>
+    <div class="btn-row" style="flex-wrap:wrap;">
+      <button class="btn-primary" id="saveUpdate" style="display:none;flex-basis:100%;">نوێکردنەوەی ئەم دەفتەرە</button>
       <button class="btn-ghost" id="saveCancel">پاشگەزبوونەوە</button>
       <button class="btn-primary" id="saveConfirm">سەیڤ بکە</button>
     </div>
@@ -510,8 +538,23 @@ function loadJSON(key){
 }
 
 let data = loadJSON(STORAGE_KEY);
-let history = loadJSON(HISTORY_KEY);   // { 'YYYY-MM-DD': {data, h, j, total, savedAt} }
+let history = loadJSON(HISTORY_KEY);   // { 'YYYY-MM-DD': [ {id, name, data, h, j, total, savedAt}, ... ] }
 let currentDate = '';                  // date of the record currently loaded, if any
+let currentId = '';                    // id of the دەفتەر currently loaded, if any
+
+function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+// migrate old format (one record per date) to the new one (list per date)
+(function migrate(){
+  let changed = false;
+  Object.keys(history).forEach(d=>{
+    if(!Array.isArray(history[d])){
+      const r = history[d];
+      history[d] = [{id:newId(), name:'دەفتەر 1', data:r.data, h:r.h, j:r.j, total:r.total, savedAt:r.savedAt}];
+      changed = true;
+    }
+  });
+  if(changed) localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+})();
 
 function todayISO(){
   const d = new Date();
@@ -593,7 +636,8 @@ function recalc(){
 function updateLoadedLabel(){
   const el = document.getElementById('loadedDate');
   if(currentDate){
-    el.textContent = 'بەرواری تۆمار: ' + currentDate;
+    const rec = (history[currentDate]||[]).find(r=>r.id===currentId);
+    el.textContent = 'بەرواری تۆمار: ' + currentDate + (rec ? ' — ' + rec.name : '');
     el.classList.add('show');
   } else {
     el.classList.remove('show');
@@ -630,6 +674,7 @@ rowsEl.addEventListener('input', (e)=>{
 function clearSheet(){
   data = {};
   currentDate = '';
+  currentId = '';
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   buildRows();
   recalc();
@@ -643,6 +688,24 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
 
 /* ---------- Save ---------- */
 const saveModal = document.getElementById('saveModal');
+const saveDateEl = document.getElementById('saveDate');
+const saveNameEl = document.getElementById('saveName');
+const saveUpdateBtn = document.getElementById('saveUpdate');
+const saveConfirmBtn = document.getElementById('saveConfirm');
+
+function findRec(date, id){ return (history[date] || []).find(r => r.id === id); }
+function nextName(date){ return 'دەفتەر ' + ((history[date] || []).length + 1); }
+
+function updateSaveUI(){
+  const date = saveDateEl.value;
+  const editing = currentId && date === currentDate && findRec(date, currentId);
+  saveNameEl.value = editing ? editing.name : nextName(date);
+  saveUpdateBtn.style.display = editing ? '' : 'none';
+  saveConfirmBtn.textContent = editing ? 'سەیڤ وەک دەفتەری نوێ' : 'سەیڤ بکە';
+  const n = (history[date] || []).length;
+  document.getElementById('saveInfo').textContent = n ? ('لەم بەروارەدا ' + n + ' دەفتەر سەیڤ کراوە') : '';
+}
+
 document.getElementById('saveBtn').addEventListener('click', ()=>{
   if(!hasAnyData()){
     toast('هیچ ژمارەیەک نەنووسراوە');
@@ -652,37 +715,47 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
   document.getElementById('saveH').textContent = fmt(t.h);
   document.getElementById('saveJ').textContent = fmt(t.j);
   document.getElementById('saveT').textContent = fmt(t.t);
-  document.getElementById('saveDate').value = currentDate || todayISO();
+  saveDateEl.value = currentDate || todayISO();
+  updateSaveUI();
   saveModal.classList.add('show');
 });
+saveDateEl.addEventListener('input', updateSaveUI);
 document.getElementById('saveCancel').addEventListener('click', ()=>saveModal.classList.remove('show'));
 
-document.getElementById('saveConfirm').addEventListener('click', ()=>{
-  const date = document.getElementById('saveDate').value;
+function doSave(asNew){
+  const date = saveDateEl.value;
   if(!date){
     toast('تکایە بەروار هەڵبژێرە');
     return;
   }
-  if(history[date] && date !== currentDate){
-    if(!confirm('بۆ ئەم بەروارە پێشتر تۆمار کراوە. دەتەوێ جێگەی بگریتەوە؟')) return;
-  }
+  const name = saveNameEl.value.trim() || nextName(date);
   const t = totals(data);
-  history[date] = {
-    data: JSON.parse(JSON.stringify(data)),
-    h: t.h, j: t.j, total: t.t,
-    savedAt: new Date().toISOString()
-  };
+  const snapshot = JSON.parse(JSON.stringify(data));
+  history[date] = history[date] || [];
+
+  let rec = null;
+  if(!asNew) rec = findRec(date, currentId);
+  if(rec){
+    rec.name = name; rec.data = snapshot; rec.h = t.h; rec.j = t.j; rec.total = t.t;
+    rec.savedAt = new Date().toISOString();
+  } else {
+    rec = {id:newId(), name:name, data:snapshot, h:t.h, j:t.j, total:t.t, savedAt:new Date().toISOString()};
+    history[date].push(rec);
+  }
   persistHistory();
   saveModal.classList.remove('show');
-  toast('سەیڤکرا: ' + date);
+  toast('سەیڤکرا: ' + date + ' — ' + name);
 
-  if(confirm('سەیڤکرا ✓\nدەتەوێ خشتەکە پاک بکرێتەوە بۆ ڕۆژی نوێ؟')){
+  if(confirm('سەیڤکرا ✓\nدەتەوێ خشتەکە پاک بکرێتەوە بۆ دەفتەری نوێ؟')){
     clearSheet();
   } else {
     currentDate = date;
+    currentId = rec.id;
     updateLoadedLabel();
   }
-});
+}
+saveConfirmBtn.addEventListener('click', ()=>doSave(true));
+saveUpdateBtn.addEventListener('click', ()=>doSave(false));
 
 /* ---------- History ---------- */
 const historyModal = document.getElementById('historyModal');
@@ -690,20 +763,19 @@ const monthPick = document.getElementById('monthPick');
 const datePick = document.getElementById('datePick');
 
 function renderHistory(){
-  // monthly total
   const month = monthPick.value;
-  let mH = 0, mJ = 0, days = 0;
+  let mH = 0, mJ = 0, days = 0, books = 0;
   Object.keys(history).forEach(d=>{
     if(month && d.startsWith(month)){
-      mH += history[d].h; mJ += history[d].j; days++;
+      days++;
+      history[d].forEach(r=>{ mH += r.h; mJ += r.j; books++; });
     }
   });
   document.getElementById('mH').textContent = fmt(mH);
   document.getElementById('mJ').textContent = fmt(mJ);
   document.getElementById('mT').textContent = fmt(mH + mJ);
-  document.getElementById('mDays').textContent = 'ژمارەی ڕۆژە سەیڤکراوەکان لەم مانگەدا: ' + days;
+  document.getElementById('mDays').textContent = 'ڕۆژە سەیڤکراوەکان: ' + days + ' — دەفتەر: ' + books;
 
-  // list (filtered by exact date if chosen)
   const wanted = datePick.value;
   let keys = Object.keys(history).sort().reverse();
   if(wanted) keys = keys.filter(k => k === wanted);
@@ -714,16 +786,19 @@ function renderHistory(){
     return;
   }
   list.innerHTML = keys.map(k=>{
-    const r = history[k];
-    return `
+    const recs = history[k];
+    const dayTotal = recs.reduce((s, r) => s + r.total, 0);
+    const head = `<div class="day-head"><span>${k}${recs.length > 1 ? ' (' + recs.length + ' دەفتەر)' : ''}</span><span class="dt">${fmt(dayTotal)}</span></div>`;
+    const cards = recs.map(r=>`
       <div class="rec">
-        <div class="rec-top"><span>${k}</span><span class="tot">${fmt(r.total)}</span></div>
+        <div class="rec-top"><span class="rec-name">${r.name}</span><span class="tot">${fmt(r.total)}</span></div>
         <div class="rec-mid"><span class="h">هەولێر: ${fmt(r.h)}</span><span class="j">جنووب: ${fmt(r.j)}</span></div>
         <div class="rec-btns">
-          <button class="open" data-date="${k}">کردنەوە / دەستکاری</button>
-          <button class="del" data-date="${k}">سڕینەوە</button>
+          <button class="open" data-date="${k}" data-id="${r.id}">کردنەوە / دەستکاری</button>
+          <button class="del" data-date="${k}" data-id="${r.id}">سڕینەوە</button>
         </div>
-      </div>`;
+      </div>`).join('');
+    return head + cards;
   }).join('');
 }
 
@@ -735,7 +810,6 @@ document.getElementById('historyBtn').addEventListener('click', ()=>{
 document.getElementById('historyClose').addEventListener('click', ()=>historyModal.classList.remove('show'));
 monthPick.addEventListener('input', renderHistory);
 datePick.addEventListener('input', ()=>{
-  // jump the month total to the searched date's month for convenience
   if(datePick.value) monthPick.value = datePick.value.slice(0,7);
   renderHistory();
 });
@@ -747,27 +821,30 @@ document.getElementById('clearFilter').addEventListener('click', ()=>{
 document.getElementById('recList').addEventListener('click', (e)=>{
   const btn = e.target.closest('button');
   if(!btn) return;
-  const date = btn.dataset.date;
-  if(!history[date]) return;
+  const date = btn.dataset.date, id = btn.dataset.id;
+  const rec = findRec(date, id);
+  if(!rec) return;
 
   if(btn.classList.contains('open')){
-    if(hasAnyData() && !(currentDate === date)){
-      if(!confirm('خشتەی ئێستا جێگەی دەگیرێتەوە بە تۆماری ' + date + '. بەردەوام بم؟\n(ئەگەر ژمارەکانی ئێستات سەیڤ نەکردووە، ئێستا سەیڤیان بکە)')) return;
+    if(hasAnyData() && currentId !== id){
+      if(!confirm('خشتەی ئێستا جێگەی دەگیرێتەوە بە ' + rec.name + ' ی ' + date + '. بەردەوام بم؟\n(ئەگەر ژمارەکانی ئێستات سەیڤ نەکردووە، ئێستا سەیڤیان بکە)')) return;
     }
-    data = JSON.parse(JSON.stringify(history[date].data));
+    data = JSON.parse(JSON.stringify(rec.data));
     currentDate = date;
+    currentId = id;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     buildRows();
     recalc();
     updateLoadedLabel();
     historyModal.classList.remove('show');
     window.scrollTo({top:0, behavior:'smooth'});
-    toast('تۆماری ' + date + ' کرایەوە');
+    toast(rec.name + ' — ' + date + ' کرایەوە');
   } else if(btn.classList.contains('del')){
-    if(confirm('دڵنیایت لە سڕینەوەی تۆماری ' + date + '؟')){
-      delete history[date];
+    if(confirm('دڵنیایت لە سڕینەوەی ' + rec.name + ' ی ' + date + '؟')){
+      history[date] = history[date].filter(r => r.id !== id);
+      if(history[date].length === 0) delete history[date];
       persistHistory();
-      if(currentDate === date){ currentDate = ''; updateLoadedLabel(); }
+      if(currentId === id){ currentDate = ''; currentId = ''; updateLoadedLabel(); }
       renderHistory();
     }
   }
